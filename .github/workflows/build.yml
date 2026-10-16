@@ -18,8 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
       - name: Restore binary assets from blobs
         shell: pwsh
@@ -49,12 +51,11 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          $log = "build-output.txt"
-          "BUILD_START:$(Get-Date -Format o)" | Out-File $log
-          msbuild GlassBoard.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:m >> $log 2>&1
-          "MSBUILD_EXIT:$LASTEXITCODE" | Out-File -Append $log
-          Get-ChildItem bin/Release -Recurse -Include *.exe | ForEach-Object { "EXE:$($_.FullName):$($_.Length)" } | Out-File -Append $log
-          if ($LASTEXITCODE -eq 0) { "BUILD SUCCESS" | Out-File -Append $log } else { "BUILD FAILED" | Out-File -Append $log }
+          "BUILD_START:$(Get-Date -Format o)" | Tee-Object -FilePath build-output.txt
+          dotnet build GlassBoard.csproj -c Release 2>&1 | Tee-Object -FilePath build-output.txt -Append
+          "DOTNET_EXIT:$LASTEXITCODE" | Tee-Object -FilePath build-output.txt -Append
+          Get-ChildItem bin/Release -Recurse -Include *.exe | ForEach-Object { "EXE:$($_.FullName):$($_.Length)" } | Tee-Object -FilePath build-output.txt -Append
+          if ($LASTEXITCODE -eq 0) { "BUILD SUCCESS" | Tee-Object -FilePath build-output.txt -Append } else { "BUILD FAILED" | Tee-Object -FilePath build-output.txt -Append; exit 1 }
 
       - name: Run diagnostics (scan + self test)
         shell: pwsh
