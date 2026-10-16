@@ -749,15 +749,15 @@ public class DockWindow : GlassWindow
 		double target;
 		if (!dock.Vertical)
 		{
-			target = (hide ? (workArea.Bottom - 20.0) : shownTop);
+			target = (hide ? workArea.Bottom : shownTop);
 		}
 		else if (dock.Edge == 1)
 		{
-			target = (hide ? (workArea.Left - base.Width + 20.0) : shownLeft);
+			target = (hide ? (workArea.Left - base.Width) : shownLeft);
 		}
 		else
 		{
-			target = (hide ? (workArea.Right - 20.0) : shownLeft);
+			target = (hide ? workArea.Right : shownLeft);
 		}
 		BeginAnimation(property, null);
 		if (!MotionEnabled)

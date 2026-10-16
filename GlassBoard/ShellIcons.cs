@@ -228,6 +228,12 @@ public static class ShellIcons
 			// 未就绪的驱动器（如未插入的 U 盘、未挂载的网络盘）上调用 SHGetFileInfo
 			// 会阻塞 UI 线程数秒甚至数十秒（AppHang 事件 1002）。DriveInfo.IsReady 是快速检查，
 			// 未就绪直接返回 null 走降级图标。
+			// 网络路径（UNC，如 \\server\share）上调用 SHGetFileInfo 可能阻塞 UI 线程数十秒，
+			// 且 DriveInfo 检查覆盖不到，直接返回 null 走降级图标。
+			if (path.StartsWith(@"\\"))
+			{
+				return null;
+			}
 			try
 			{
 				string root = Path.GetPathRoot(path);
