@@ -1,0 +1,110 @@
+name: Build GlassBoard
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'build.log'
+      - 'dist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore binary assets from blobs
+        shell: pwsh
+        run: |
+          "BLOB_RESTORE:$(Get-Date -Format o)" | Out-File build-output.txt
+          New-Item -ItemType Directory -Force lib | Out-Null
+          # Interop DLL is stored gzipped as base64
+          $b64 = (Get-Content "tools/blobs/Interop.UIAutomationClient.dll.gz.b64" -Raw).Trim()
+          $bytes = [Convert]::FromBase64String($b64)
+          $ms = [IO.MemoryStream]::new($bytes)
+          $gz = [IO.Compression.GzipStream]::new($ms, [IO.Compression.CompressionMode]::Decompress)
+          $out = [IO.File]::Create("lib/Interop.UIAutomationClient.dll")
+          $gz.CopyTo($out); $out.Close(); $gz.Close(); $ms.Close()
+          "BLOB_OK:lib/Interop.UIAutomationClient.dll:$((Get-Item 'lib/Interop.UIAutomationClient.dll').Length)" | Out-File -Append build-output.txt
+          $b = @{
+            "tools/blobs/app.ico.b64" = "app.ico"
+            "tools/blobs/qr.jpg.b64" = "qr.jpg"
+            "tools/blobs/miya_board.png.b64" = "miya_board.png"
+            "tools/blobs/miya_settings.png.b64" = "miya_settings.png"
+          }
+          foreach ($kv in $b.GetEnumerator()) {
+            $raw = [Convert]::FromBase64String((Get-Content $kv.Key -Raw).Trim())
+            [IO.File]::WriteAllBytes($kv.Value, $raw)
+            "BLOB_OK:$($kv.Value):$($raw.Length)" | Out-File -Append build-output.txt
+          }
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $log = "build-output.txt"
+          "BUILD_START:$(Get-Date -Format o)" | Out-File $log
+          msbuild GlassBoard.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:m >> $log 2>&1
+          "MSBUILD_EXIT:$LASTEXITCODE" | Out-File -Append $log
+          Get-ChildItem bin/Release -Recurse -Include *.exe | ForEach-Object { "EXE:$($_.FullName):$($_.Length)" } | Out-File -Append $log
+          if ($LASTEXITCODE -eq 0) { "BUILD SUCCESS" | Out-File -Append $log } else { "BUILD FAILED" | Out-File -Append $log }
+
+      - name: Run diagnostics (scan + self test)
+        shell: pwsh
+        run: |
+          $log = "build-output.txt"
+          $exe = Get-ChildItem -Path bin/Release -Filter GlassBoard.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { "DIAG_SKIP:no exe" | Out-File -Append $log; exit 0 }
+          "DIAG_START:$(Get-Date -Format o)" | Out-File -Append $log
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList "--scan-test" -NoNewWindow -PassThru -RedirectStandardOutput "audit-out.txt" -RedirectStandardError "audit-err.txt"
+          if ($p.WaitForExit(240000)) {
+            "SCANTEST_EXIT:$($p.ExitCode)" | Out-File -Append $log
+            Get-Content audit-out.txt -Raw | Out-File -Append $log
+            $e = Get-Content audit-err.txt -Raw
+            if ($e) { "SCANTEST_STDERR:$e" | Out-File -Append $log }
+          } else {
+            "SCANTEST_TIMEOUT:240s probable hang, killing" | Out-File -Append $log
+            Stop-Process -Id $p.Id -Force
+          }
+          $p2 = Start-Process -FilePath $exe.FullName -ArgumentList "--self-test" -NoNewWindow -PassThru -RedirectStandardOutput "selftest-out.txt" -RedirectStandardError "selftest-err.txt"
+          if ($p2.WaitForExit(120000)) {
+            "SELFTEST_EXIT:$($p2.ExitCode)" | Out-File -Append $log
+            Get-Content selftest-out.txt -Raw | Out-File -Append $log
+          } else {
+            "SELFTEST_TIMEOUT:120s" | Out-File -Append $log
+            Stop-Process -Id $p2.Id -Force
+          }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $rel = "bin/Release"
+          if (Test-Path $rel) {
+            Compress-Archive -Path "$rel/*" -DestinationPath "dist/GlassBoard-build.zip" -Force
+            "PACKAGED:dist/GlassBoard-build.zip" | Out-File -Append build-output.txt
+          } else {
+            "PACKAGE_SKIP:no Release dir" | Out-File -Append build-output.txt
+          }
+          Copy-Item build-output.txt build.log -Force
+
+      - name: Commit results back
+        shell: pwsh
+        run: |
+          git config user.name "glassboard-builder"
+          git config user.email "builder@local"
+          git add -f dist/GlassBoard-build.zip build.log
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "build: update dist and log [skip ci]"
+            git push origin main
+          } else {
+            "NO_CHANGES_TO_COMMIT" | Out-File -Append build-output.txt
+          }
