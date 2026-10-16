@@ -77,11 +77,17 @@ public static class ScanTest
 				Console.WriteLine("  DUP: " + string.Join(" | ", g.Select((Entry e) => e.Name)));
 			}
 
-			// 图标路径冒烟测试：对前 30 个条目取图标（带驱动器保护，不应卡死）
+			// 图标渲染冒烟测试：对每一个条目实际取图标并逐个计时，
+			// 揪出会导致 UI 线程卡死的慢图标（如网络路径）。每条目测试前先打印，
+			// 若真卡死，日志最后一行即为凶手。
 			Stopwatch sw2 = Stopwatch.StartNew();
 			int iconOk = 0;
-			foreach (Entry e in entries.Take(30))
+			int slow = 0;
+			foreach (Entry e in entries)
 			{
+				Console.WriteLine("TESTING:" + e.Name + " :: " + e.Path);
+				Console.Out.Flush();
+				Stopwatch sw3 = Stopwatch.StartNew();
 				try
 				{
 					if (FeatureUi.Icon(e) != null)
@@ -93,13 +99,24 @@ public static class ScanTest
 				{
 					Console.WriteLine("ICON_ERR:" + e.Name + " :: " + ex.Message);
 				}
-				if (sw2.ElapsedMilliseconds > 60000)
+				sw3.Stop();
+				if (sw3.ElapsedMilliseconds > 3000)
 				{
-					Console.WriteLine("ICON_TIMEOUT:60s");
+					Console.WriteLine("SLOW_ICON:" + sw3.ElapsedMilliseconds + "ms :: " + e.Name + " :: " + e.Path);
+					slow++;
+				}
+				if (sw2.ElapsedMilliseconds > 180000)
+				{
+					Console.WriteLine("ICON_TIMEOUT:180s");
 					break;
 				}
 			}
-			Console.WriteLine("ICON_DONE:ok=" + iconOk + " ms=" + sw2.ElapsedMilliseconds);
+			Console.WriteLine("ICON_DONE:ok=" + iconOk + " slow=" + slow + " total=" + entries.Count + " ms=" + sw2.ElapsedMilliseconds);
+			if (slow > 0)
+			{
+				Console.WriteLine("SCANTEST_FAIL:slow icons detected");
+				return 1;
+			}
 			Console.WriteLine("SCANTEST_OK totalMs=" + sw.ElapsedMilliseconds);
 			return 0;
 		}
