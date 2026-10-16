@@ -1,6 +1,6 @@
-BUILD_START:2026-10-16T01:22:20.9361926+00:00
+BUILD_START:2026-10-16T01:40:36.9796340+00:00
   Determining projects to restore...
-  Restored D:\a\glassboard\glassboard\GlassBoard.csproj (in 193 ms).
+  Restored D:\a\glassboard\glassboard\GlassBoard.csproj (in 744 ms).
 D:\a\glassboard\glassboard\GlassBoard\SystemMedia.cs(33,17): warning CS0649: Field 'SystemMedia.KEYBDINPUT.Extra' is never assigned to, and will always have its default value [D:\a\glassboard\glassboard\GlassBoard.csproj]
 D:\a\glassboard\glassboard\GlassBoard\SystemMedia.cs(16,15): warning CS0649: Field 'SystemMedia.MOUSEINPUT.Flags' is never assigned to, and will always have its default value 0 [D:\a\glassboard\glassboard\GlassBoard.csproj]
 D:\a\glassboard\glassboard\GlassBoard\SystemMedia.cs(14,15): warning CS0649: Field 'SystemMedia.MOUSEINPUT.Data' is never assigned to, and will always have its default value 0 [D:\a\glassboard\glassboard\GlassBoard.csproj]
@@ -26,14 +26,14 @@ D:\a\glassboard\glassboard\GlassBoard\SystemMedia.cs(10,14): warning CS0649: Fie
     9 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:11.06
+Time Elapsed 00:00:09.67
 DOTNET_EXIT:0
 EXE:D:\a\glassboard\glassboard\bin\Release\GlassBoard.exe:649728
 BUILD SUCCESS
-DIAG_START:2026-10-16T01:22:35.2332058+00:00
+DIAG_START:2026-10-16T01:40:50.1228786+00:00
 SCANTEST_EXIT:0
-SCAN_PATHS:177 limited=False skipped=0 ms=16
-ENRICH_DONE:kept=133 folders=1 ms=2950
+SCAN_PATHS:177 limited=False skipped=0 ms=12
+ENRICH_DONE:kept=133 folders=1 ms=4061
 DEDUP:dupGroups=24 mergedEntries=16
   DUP: Firefox | Firefox Private Browsing | Firefox
   DUP: Google Chrome | Google Chrome
@@ -50,8 +50,8 @@ DEDUP:dupGroups=24 mergedEntries=16
   DUP: x86 Native Tools Command Prompt for VS | x86_x64 Cross Tools Command Prompt for VS
   DUP: Strawberry Perl Release Notes | Strawberry Perl Website
   DUP: Service Fabric Local Cluster Manager | Service Fabric Local Cluster Manager
-ICON_DONE:ok=30 ms=1028
-SCANTEST_OK totalMs=3986
+ICON_DONE:ok=30 ms=919
+SCANTEST_OK totalMs=4987
 
 SELFTEST_EXIT:1
 PACKAGED:dist/GlassBoard-build.zip
